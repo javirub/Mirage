@@ -9,7 +9,7 @@ import { BlockedTargetError, ProxyError } from './errors.js';
 import { buildUpstreamRequestHeaders } from './request-headers.js';
 import { buildDownstreamResponseHeaders } from './response-headers.js';
 import { assertAllowedTarget } from './security.js';
-import { parseTargetPath, targetFromProxyUrl, toProxyPath } from './target.js';
+import { parseTargetPath, targetFromBareHostPath, targetFromProxyUrl, toProxyPath } from './target.js';
 import { createUpstreamAgent, fetchUpstream } from './upstream.js';
 
 export interface ProxyRuntime {
@@ -154,12 +154,17 @@ async function handleUntargeted(request: Request, requestUrl: URL): Promise<Resp
     return new Response(null, { status: 307, headers: { location: toProxyPath(resolved), 'cache-control': 'no-store' } });
   }
   if (requestUrl.pathname === '/favicon.ico') return new Response(null, { status: 204 });
+  // `/ejemplo.com/ruta` escrito a mano en la barra de direcciones: se asume https.
+  const bareHost = request.method === 'GET' ? targetFromBareHostPath(requestUrl.pathname + requestUrl.search) : null;
+  if (bareHost !== null) {
+    return new Response(null, { status: 302, headers: { location: toProxyPath(bareHost), 'cache-control': 'no-store' } });
+  }
   return htmlResponse(
     404,
     await renderErrorPage({
       status: 404,
       message: 'Esta ruta no contiene una URL que proxificar',
-      detail: `Usa el formato /https://ejemplo.com/ruta (recibido: ${requestUrl.pathname})`,
+      detail: `Usa el formato /https:/ejemplo.com/ruta (recibido: ${requestUrl.pathname})`,
       target: undefined,
     }),
   );

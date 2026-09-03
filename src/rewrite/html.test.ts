@@ -24,28 +24,28 @@ describe('rewriteHtmlDocument', () => {
 </body></html>`;
     const output = rewriteHtmlDocument(input, documentUrl);
 
-    assert.match(output, /<link rel="stylesheet" href="\/https:\/\/example\.com\/css\/site\.css">/);
+    assert.match(output, /<link rel="stylesheet" href="\/https:\/example\.com\/css\/site\.css">/);
     assert.doesNotMatch(output, /integrity=/);
-    assert.match(output, /body\{background:url\("\/https:\/\/example\.com\/bg\.png"\)\}/);
-    assert.match(output, /content="0; url=\/https:\/\/example\.com\/next"/);
+    assert.match(output, /body\{background:url\("\/https:\/example\.com\/bg\.png"\)\}/);
+    assert.match(output, /content="0; url=\/https:\/example\.com\/next"/);
     assert.doesNotMatch(output, /Content-Security-Policy/i);
-    assert.match(output, /<a href="\/https:\/\/example\.com\/other\.html">x<\/a>/);
+    assert.match(output, /<a href="\/https:\/example\.com\/other\.html">x<\/a>/);
     assert.doesNotMatch(output, /ping=/);
     assert.match(
       output,
-      /src="\/https:\/\/example\.com\/dir\/a\.jpg" srcset="\/https:\/\/example\.com\/dir\/a\.jpg 1x, \/https:\/\/example\.com\/b\.jpg 2x"/,
+      /src="\/https:\/example\.com\/dir\/a\.jpg" srcset="\/https:\/example\.com\/dir\/a\.jpg 1x, \/https:\/example\.com\/b\.jpg 2x"/,
     );
-    assert.match(output, /style="background-image:url\(&quot;\/https:\/\/example\.com\/dir\/c\.png&quot;\)"/);
-    assert.match(output, /<form action="\/https:\/\/example\.com\/submit">/);
-    assert.match(output, /formaction="\/https:\/\/other\.org\/alt"/);
+    assert.match(output, /style="background-image:url\(&quot;\/https:\/example\.com\/dir\/c\.png&quot;\)"/);
+    assert.match(output, /<form action="\/https:\/example\.com\/submit">/);
+    assert.match(output, /formaction="\/https:\/other\.org\/alt"/);
     assert.match(output, /<a href="#top">/);
     assert.match(output, /<a href="javascript:void\(0\)">/);
     assert.match(output, /<a href="mailto:a@b\.c">/);
-    assert.match(output, /<object data="\/https:\/\/example\.com\/movie\.swf">/);
-    assert.match(output, /<image href="\/https:\/\/example\.com\/icon\.svg">/);
+    assert.match(output, /<object data="\/https:\/example\.com\/movie\.swf">/);
+    assert.match(output, /<image href="\/https:\/example\.com\/icon\.svg">/);
     assert.match(output, /xlink:href="#id"/);
-    assert.match(output, /<template><img src="\/https:\/\/example\.com\/in-template\.png"><\/template>/);
-    assert.match(output, /<noscript><img src="\/https:\/\/example\.com\/noscript\.png"><\/noscript>/);
+    assert.match(output, /<template><img src="\/https:\/example\.com\/in-template\.png"><\/template>/);
+    assert.match(output, /<noscript><img src="\/https:\/example\.com\/noscript\.png"><\/noscript>/);
   });
 
   it('inyecta meta charset, base y runtime al principio de head, en ese orden', () => {
@@ -54,7 +54,7 @@ describe('rewriteHtmlDocument', () => {
       documentUrl,
     );
     const head = /<head>(.*?)<\/head>/s.exec(output)?.[1] ?? '';
-    assert.match(head, /^<meta charset="utf-8"><base href="\/https:\/\/example\.com\/dir\/page\.html"><script data-mirage="runtime">/);
+    assert.match(head, /^<meta charset="utf-8"><base href="\/https:\/example\.com\/dir\/page\.html"><script data-mirage="runtime">/);
     assert.equal(head.match(/<meta charset/g)?.length, 1);
     assert.match(head, /"target":"https:\/\/example\.com\/dir\/page\.html"/);
   });
@@ -64,9 +64,9 @@ describe('rewriteHtmlDocument', () => {
       '<html><head><base href="https://cdn.example.net/assets/" target="_blank"></head><body><img src="x.png"></body></html>',
       documentUrl,
     );
-    assert.match(output, /<base href="\/https:\/\/cdn\.example\.net\/assets\/">/);
+    assert.match(output, /<base href="\/https:\/cdn\.example\.net\/assets\/">/);
     assert.match(output, /<base target="_blank">/);
-    assert.match(output, /<img src="\/https:\/\/cdn\.example\.net\/assets\/x\.png">/);
+    assert.match(output, /<img src="\/https:\/cdn\.example\.net\/assets\/x\.png">/);
   });
 
   it('elimina meta content-type y no rompe entidades en atributos', () => {
@@ -75,13 +75,13 @@ describe('rewriteHtmlDocument', () => {
       documentUrl,
     );
     assert.doesNotMatch(output, /windows-1252/);
-    assert.match(output, /href="\/https:\/\/example\.com\/p\?a=1&amp;b=2"/);
+    assert.match(output, /href="\/https:\/example\.com\/p\?a=1&amp;b=2"/);
   });
 });
 
 describe('rewriteHtmlFragment', () => {
   it('reescribe sin envolver ni inyectar runtime', () => {
     const output = rewriteHtmlFragment('<div><a href="/x">x</a><img src="y.png"></div>', documentUrl);
-    assert.equal(output, '<div><a href="/https://example.com/x">x</a><img src="/https://example.com/dir/y.png"></div>');
+    assert.equal(output, '<div><a href="/https:/example.com/x">x</a><img src="/https:/example.com/dir/y.png"></div>');
   });
 });

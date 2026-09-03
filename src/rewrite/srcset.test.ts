@@ -25,8 +25,8 @@ describe('parseSrcset', () => {
 describe('rewriteSrcset', () => {
   it('reescribe cada URL y conserva los descriptores', () => {
     assert.equal(
-      rewriteSrcset('/a.jpg 1x, /b.jpg 2x', (url) => `/https://example.com${url}`),
-      '/https://example.com/a.jpg 1x, /https://example.com/b.jpg 2x',
+      rewriteSrcset('/a.jpg 1x, /b.jpg 2x', (url) => `/https:/example.com${url}`),
+      '/https:/example.com/a.jpg 1x, /https:/example.com/b.jpg 2x',
     );
   });
 });

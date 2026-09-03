@@ -9,15 +9,15 @@ describe('rewriteSetCookie', () => {
   it('delimita la cookie al origen y elimina Domain', () => {
     assert.equal(
       rewriteSetCookie('sid=abc; Domain=.example.com; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600', target, true),
-      'sid=abc; Path=/https://www.example.com; HttpOnly; Secure; Max-Age=3600; SameSite=Lax',
+      'sid=abc; Path=/https:/www.example.com; HttpOnly; Secure; Max-Age=3600; SameSite=Lax',
     );
   });
 
   it('adapta Secure y SameSite=None cuando el proxy va por http', () => {
-    assert.equal(rewriteSetCookie('a=1; Secure; SameSite=None', target, false), 'a=1; Path=/https://www.example.com; SameSite=Lax');
+    assert.equal(rewriteSetCookie('a=1; Secure; SameSite=None', target, false), 'a=1; Path=/https:/www.example.com; SameSite=Lax');
     assert.equal(
       rewriteSetCookie('a=1; Secure; SameSite=None', target, true),
-      'a=1; Path=/https://www.example.com; Secure; SameSite=None',
+      'a=1; Path=/https:/www.example.com; Secure; SameSite=None',
     );
   });
 
@@ -29,7 +29,7 @@ describe('rewriteSetCookie', () => {
   it('conserva valores con = y atributos Expires con comas', () => {
     assert.equal(
       rewriteSetCookie('tok=a=b==; Expires=Wed, 21 Oct 2026 07:28:00 GMT', target, true),
-      'tok=a=b==; Path=/https://www.example.com; Expires=Wed, 21 Oct 2026 07:28:00 GMT',
+      'tok=a=b==; Path=/https:/www.example.com; Expires=Wed, 21 Oct 2026 07:28:00 GMT',
     );
   });
 });

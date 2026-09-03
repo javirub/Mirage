@@ -31,7 +31,12 @@ const CLIENT_RUNTIME = String.raw`(function () {
   }
 
   function isProxied(value) {
-    return /^\/https?:\/\//i.test(value) || value.indexOf(proxyOrigin + '/http') === 0;
+    return /^\/https?:\//i.test(value) || value.indexOf(proxyOrigin + '/http') === 0;
+  }
+
+  // Forma canónica del proxy: una sola barra tras el esquema (Vercel colapsa las dobles).
+  function toProxyPath(href) {
+    return '/' + href.replace(/^(https?):\/\//i, '$1:/');
   }
 
   function proxify(raw) {
@@ -50,7 +55,7 @@ const CLIENT_RUNTIME = String.raw`(function () {
         absolute = new URL(absolute.pathname + absolute.search + absolute.hash, currentTarget());
       }
       if (absolute.protocol !== 'http:' && absolute.protocol !== 'https:') { return raw; }
-      return proxyOrigin + '/' + absolute.href;
+      return proxyOrigin + toProxyPath(absolute.href);
     } catch (error) {
       return raw;
     }
@@ -216,7 +221,7 @@ const CLIENT_RUNTIME = String.raw`(function () {
   // --- Cookies -----------------------------------------------------------------------------
   function proxifyCookie(cookie) {
     var target = new URL(currentTarget());
-    var prefix = '/' + target.protocol + '//' + target.host;
+    var prefix = '/' + target.protocol + '/' + target.host;
     var parts = String(cookie).split(';');
     var output = [parts[0]];
     var hasPath = false;

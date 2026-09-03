@@ -14,7 +14,7 @@ describe('buildUpstreamRequestHeaders', () => {
       'x-forwarded-for': '1.2.3.4',
       'x-vercel-id': 'abc',
       'accept-encoding': 'gzip, br, zstd',
-      referer: 'https://proxy.test/https://example.com/app/',
+      referer: 'https://proxy.test/https:/example.com/app/',
       origin: 'https://proxy.test',
       cookie: '__mirage_host-csrf=1; sid=2',
       'user-agent': 'UA',
@@ -61,11 +61,11 @@ describe('buildDownstreamResponseHeaders', () => {
     assert.equal(headers.get('content-security-policy'), null);
     assert.equal(headers.get('strict-transport-security'), null);
     assert.equal(headers.get('x-frame-options'), null);
-    assert.equal(headers.get('location'), '/https://example.com/login?next=%2Fapp');
-    assert.equal(headers.get('link'), '</https://example.com/a.css>; rel=preload; as=style');
-    assert.equal(headers.get('refresh'), '2; url=/https://other.org/');
+    assert.equal(headers.get('location'), '/https:/example.com/login?next=%2Fapp');
+    assert.equal(headers.get('link'), '</https:/example.com/a.css>; rel=preload; as=style');
+    assert.equal(headers.get('refresh'), '2; url=/https:/other.org/');
     assert.equal(headers.get('etag'), '"abc"');
     assert.equal(headers.get('cache-control'), 'public, max-age=60');
-    assert.deepEqual(headers.getSetCookie(), ['a=1; Path=/https://example.com', 'b=2; Path=/https://example.com; Secure; HttpOnly']);
+    assert.deepEqual(headers.getSetCookie(), ['a=1; Path=/https:/example.com', 'b=2; Path=/https:/example.com; Secure; HttpOnly']);
   });
 });

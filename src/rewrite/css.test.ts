@@ -10,14 +10,14 @@ describe('rewriteCss', () => {
     const css = `a{background:url(img/a.png)} b{background:url( "/b.png" )} c{background:url('//cdn.example.net/c.png')}`;
     assert.equal(
       rewriteCss(css, base),
-      `a{background:url("/https://example.com/css/img/a.png")} b{background:url("/https://example.com/b.png")} c{background:url("/https://cdn.example.net/c.png")}`,
+      `a{background:url("/https:/example.com/css/img/a.png")} b{background:url("/https:/example.com/b.png")} c{background:url("/https:/cdn.example.net/c.png")}`,
     );
   });
 
   it('reescribe @import con cadena y con url()', () => {
     assert.equal(
       rewriteCss(`@import "reset.css"; @import url('print.css') print;`, base),
-      `@import "/https://example.com/css/reset.css"; @import url("/https://example.com/css/print.css") print;`,
+      `@import "/https:/example.com/css/reset.css"; @import url("/https:/example.com/css/print.css") print;`,
     );
   });
 

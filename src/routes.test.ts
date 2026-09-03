@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import type { AddressInfo } from 'node:net';
 import { after, before, describe, it } from 'node:test';
 
-import { createApp } from './app.js';
+import { createApp } from './routes.js';
 import { DEFAULT_CONFIG } from './config.js';
 
 const PROXY = 'http://localhost:3000';
@@ -69,6 +69,7 @@ function upstreamHandler(request: IncomingMessage, response: ServerResponse): vo
 describe('proxy end-to-end', () => {
   let server: Server;
   let origin = '';
+  let proxiedOrigin = '';
   const app = createApp({ ...DEFAULT_CONFIG, allowPrivateTargets: true });
 
   before(async () => {
@@ -76,6 +77,7 @@ describe('proxy end-to-end', () => {
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
     const { port } = server.address() as AddressInfo;
     origin = `http://127.0.0.1:${String(port)}`;
+    proxiedOrigin = origin.replace('://', ':/');
   });
 
   after(async () => {
@@ -85,7 +87,7 @@ describe('proxy end-to-end', () => {
   });
 
   const proxied = (path: string, init?: RequestInit): Promise<Response> =>
-    Promise.resolve(app.fetch(new Request(`${PROXY}/${origin}${path}`, init)));
+    Promise.resolve(app.fetch(new Request(`${PROXY}/${proxiedOrigin}${path}`, init)));
 
   it('sirve la portada y robots.txt', async () => {
     const landing = await app.fetch(new Request(`${PROXY}/`));
@@ -100,13 +102,13 @@ describe('proxy end-to-end', () => {
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('content-type'), 'text/html; charset=utf-8');
     assert.equal(response.headers.get('content-security-policy'), null);
-    assert.deepEqual(response.headers.getSetCookie(), [`session=abc; Path=/${origin}; HttpOnly`, `__mirage_host-csrf=xyz; Path=/${origin}`]);
+    assert.deepEqual(response.headers.getSetCookie(), [`session=abc; Path=/${proxiedOrigin}; HttpOnly`, `__mirage_host-csrf=xyz; Path=/${proxiedOrigin}`]);
     const html = await response.text();
-    assert.ok(html.includes(`<base href="/${origin}/">`));
+    assert.ok(html.includes(`<base href="/${proxiedOrigin}/">`));
     assert.match(html, /<script data-mirage="runtime">/);
-    assert.ok(html.includes(`href="/${origin}/style.css"`));
-    assert.ok(html.includes(`href="/${origin}/page?x=1"`));
-    assert.ok(html.includes(`src="/${origin}/img/a.png"`));
+    assert.ok(html.includes(`href="/${proxiedOrigin}/style.css"`));
+    assert.ok(html.includes(`href="/${proxiedOrigin}/page?x=1"`));
+    assert.ok(html.includes(`src="/${proxiedOrigin}/img/a.png"`));
   });
 
   it('convierte a UTF-8 documentos en otras codificaciones', async () => {
@@ -117,13 +119,13 @@ describe('proxy end-to-end', () => {
   it('reescribe CSS', async () => {
     const response = await proxied('/style.css');
     assert.equal(response.headers.get('content-type'), 'text/css; charset=utf-8');
-    assert.equal(await response.text(), `body{background:url("/${origin}/bg.png")}`);
+    assert.equal(await response.text(), `body{background:url("/${proxiedOrigin}/bg.png")}`);
   });
 
   it('devuelve las redirecciones al navegador con Location reescrito', async () => {
     const response = await proxied('/redirect');
     assert.equal(response.status, 302);
-    assert.equal(response.headers.get('location'), `/${origin}/page?from=redirect`);
+    assert.equal(response.headers.get('location'), `/${proxiedOrigin}/page?from=redirect`);
   });
 
   it('reenvía método, cuerpo, cookies restauradas y referer/origin reales', async () => {
@@ -133,7 +135,7 @@ describe('proxy end-to-end', () => {
       headers: {
         'content-type': 'text/plain',
         cookie: '__mirage_host-csrf=xyz; session=abc',
-        referer: `${PROXY}/${origin}/form`,
+        referer: `${PROXY}/${proxiedOrigin}/form`,
         origin: PROXY,
         'x-forwarded-for': '9.9.9.9',
       },
@@ -158,24 +160,30 @@ describe('proxy end-to-end', () => {
 
   it('trata las respuestas HTML a fetch como fragmentos', async () => {
     const response = await proxied('/fragment', { headers: { 'sec-fetch-dest': 'empty' } });
-    assert.equal(await response.text(), `<li><a href="/${origin}/item/1">uno</a></li>`);
+    assert.equal(await response.text(), `<li><a href="/${proxiedOrigin}/item/1">uno</a></li>`);
   });
 
   it('redirige rutas sin objetivo usando el Referer proxificado', async () => {
     const response = await app.fetch(
-      new Request(`${PROXY}/api/data?x=1`, { headers: { referer: `${PROXY}/${origin}/app/index.html` } }),
+      new Request(`${PROXY}/api/data?x=1`, { headers: { referer: `${PROXY}/${proxiedOrigin}/app/index.html` } }),
     );
     assert.equal(response.status, 307);
-    assert.equal(response.headers.get('location'), `/${origin}/api/data?x=1`);
+    assert.equal(response.headers.get('location'), `/${proxiedOrigin}/api/data?x=1`);
     const orphan = await app.fetch(new Request(`${PROXY}/api/data`));
     assert.equal(orphan.status, 404);
   });
 
+  it('redirige rutas que empiezan por un host sin esquema a su versión https', async () => {
+    const response = await app.fetch(new Request(`${PROXY}/www.example.com/path?q=1`));
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), '/https:/www.example.com/path?q=1');
+  });
+
   it('rechaza apuntar al propio proxy y hosts privados cuando la protección está activa', async () => {
-    const loop = await app.fetch(new Request(`${PROXY}/http://localhost:3000/x`));
+    const loop = await app.fetch(new Request(`${PROXY}/http:/localhost:3000/x`));
     assert.equal(loop.status, 403);
     const guarded = createApp(DEFAULT_CONFIG);
-    const blocked = await guarded.fetch(new Request(`${PROXY}/${origin}/`));
+    const blocked = await guarded.fetch(new Request(`${PROXY}/${proxiedOrigin}/`));
     assert.equal(blocked.status, 403);
   });
 });

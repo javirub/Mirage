@@ -10,14 +10,14 @@ export async function renderLandingPage(): Promise<string> {
       <input name="url" type="text" placeholder="https://ejemplo.com" autocomplete="off" autofocus required />
       <button type="submit">Abrir</button>
     </form>
-    <p>También puedes escribir la URL directamente tras la barra: <code>/https://ejemplo.com/ruta</code></p>
+    <p>También puedes escribir la URL directamente tras la barra: <code>/https:/ejemplo.com/ruta</code> (o simplemente <code>/ejemplo.com/ruta</code>)</p>
     <script>
       document.getElementById('go').addEventListener('submit', function (event) {
         var raw = this.elements.url.value.trim();
         if (!raw) return;
         event.preventDefault();
         var withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : 'https://' + raw;
-        window.location.href = '/' + withScheme;
+        window.location.href = '/' + withScheme.replace(/^([a-z][a-z0-9+.-]*):\/\//i, '$1:/');
       });
     </script>
   `;

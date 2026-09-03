@@ -5,8 +5,8 @@ A web proxy deployable on Vercel. It fetches a URL from the origin server and re
 go through the proxy itself.
 
 ```
-https://<your-proxy>.vercel.app/https://example.com/path?query
-                                └────────── real URL ─────────┘
+https://<your-proxy>.vercel.app/https:/example.com/path?query
+                                └───────── real URL ─────────┘
 ```
 
 ## Usage: browsing and searching a site through the proxy
@@ -15,9 +15,14 @@ There is a single rule: **put the full URL of the site after the proxy's slash**
 follows (path, `?query`, `#fragment`) is passed to the target site untouched.
 
 ```
-https://<your-proxy>/https://www.infojobs.net/jobsearch/search-results/list.xhtml?keyword=platform%20architect
-        └── proxy ──┘└──────────────────── real URL, with its own query string ──────────────────┘
+https://<your-proxy>/https:/www.infojobs.net/jobsearch/search-results/list.xhtml?keyword=platform%20architect
+        └── proxy ──┘└──────────────────── real URL, with its own query string ─────────────────┘
 ```
+
+The canonical form has a **single slash after the scheme** (`/https:/host/...`): Vercel collapses
+double slashes in the path with a `308` redirect, so that is what the proxy generates. Typing
+`/https://host/...` or even just `/host/...` (https is assumed) also works: both are redirected to
+the canonical form.
 
 ### From the browser
 
@@ -30,10 +35,10 @@ https://<your-proxy>/https://www.infojobs.net/jobsearch/search-results/list.xhtm
 3. To search directly, build the site's search URL and prefix it with the proxy. Examples:
 
 ```
-/https://www.google.com/search?q=hono+vercel
-/https://duckduckgo.com/?q=web+proxy
-/https://www.infojobs.net/jobsearch/search-results/list.xhtml?keyword=AI%20solution%20architect&sortBy=RELEVANCE
-/https://en.wikipedia.org/w/index.php?search=Vercel
+/https:/www.google.com/search?q=hono+vercel
+/https:/duckduckgo.com/?q=web+proxy
+/https:/www.infojobs.net/jobsearch/search-results/list.xhtml?keyword=AI%20solution%20architect&sortBy=RELEVANCE
+/https:/en.wikipedia.org/w/index.php?search=Vercel
 ```
 
 Spaces go as `%20` or `+`, whatever the site expects; the proxy never rewrites query values. The
@@ -47,7 +52,7 @@ Same thing with `curl`. Quote the URL (it contains `?`, `&` and `//`) and send a
 ```bash
 PROXY=http://localhost:3000   # or https://<your-proxy>.vercel.app
 
-curl -s "$PROXY/https://www.infojobs.net/jobsearch/search-results/list.xhtml?keyword=platform%20architect&sortBy=RELEVANCE" \
+curl -s "$PROXY/https:/www.infojobs.net/jobsearch/search-results/list.xhtml?keyword=platform%20architect&sortBy=RELEVANCE" \
   -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/128.0 Safari/537.36' \
   -H 'Accept-Language: es-ES,es;q=0.9' \
   -o results.html
@@ -56,9 +61,9 @@ curl -s "$PROXY/https://www.infojobs.net/jobsearch/search-results/list.xhtml?key
 - Without a `Sec-Fetch-Dest` header the response is treated as a full document: rewritten HTML with
   the injected `<base>` and client runtime. Add `-H 'Sec-Fetch-Dest: empty'` to get only the
   rewritten fragment (useful for HTMX/Turbo-style HTML endpoints).
-- URLs in the returned HTML are proxy paths (`/https://...`); strip the leading slash to get the
-  real URL back.
-- `POST`: `curl -X POST "$PROXY/https://example.com/api/search" -H 'Content-Type: application/json' -d '{"q":"x"}'`.
+- URLs in the returned HTML are proxy paths (`/https:/host/...`); strip the leading slash and
+  restore the `//` after the scheme to get the real URL back.
+- `POST`: `curl -X POST "$PROXY/https:/example.com/api/search" -H 'Content-Type: application/json' -d '{"q":"x"}'`.
 - Redirects (`3xx`) come back with an already-proxied `Location`; use `-L` to follow them.
 
 From JavaScript (Node, a worker, a browser extension...) it is a plain `fetch`:
@@ -69,7 +74,7 @@ const target = new URL('https://www.infojobs.net/jobsearch/search-results/list.x
 target.searchParams.set('keyword', 'AI solution architect');
 target.searchParams.set('sortBy', 'RELEVANCE');
 
-const response = await fetch(`${proxy}/${target.href}`, {
+const response = await fetch(`${proxy}/${target.href.replace('://', ':/')}`, {
   headers: { 'user-agent': 'Mozilla/5.0 ...', 'accept-language': 'es-ES,es;q=0.9' },
 });
 const html = await response.text();
@@ -94,9 +99,9 @@ that sites with anti-bot protection may answer differently to the proxy's IP tha
 
 **Server** (`src/proxy`, `src/rewrite`)
 
-- URL scheme: the real URL goes verbatim after the first slash. Every rewritten URL is an absolute
-  proxy path (`/https://host/...`). Requests are also accepted with a single slash after the scheme
-  in case an intermediary collapses `//`.
+- URL scheme: the real URL goes after the first slash, with a single slash after its scheme
+  (`/https:/host/...`, because Vercel collapses `//` in paths). Every rewritten URL is an absolute
+  proxy path in that form; the double-slash form is accepted on input too.
 - HTML: parsed with `parse5`; rewrites `href`, `src`, `action`, `formaction`, `poster`,
   `srcset`/`imagesrcset`, `<object data>`, `xlink:href`, `style` attributes, `<style>` blocks,
   `<meta http-equiv="refresh">`, `<template>` and `<noscript>` content. Removes CSP `<meta>` tags,
@@ -107,7 +112,7 @@ that sites with anti-bot protection may answer differently to the proxy's IP tha
   `X-Frame-Options`, COOP/COEP/CORP, `Permissions-Policy`, `Clear-Site-Data`, etc. Towards the
   origin, `Referer` and `Origin` are translated to the real URLs and infrastructure headers
   (`x-forwarded-*`, `x-vercel-*`) are dropped.
-- Cookies: every `Set-Cookie` loses `Domain` and gets `Path=/https://host`, so the browser only
+- Cookies: every `Set-Cookie` loses `Domain` and gets `Path=/https:/host`, so the browser only
   sends it with requests for that same origin. `__Host-`/`__Secure-` prefixes are renamed towards
   the browser and restored when forwarding.
 - Encoding: HTML is decoded with the declared charset (header or `<meta>`) and always served as
@@ -165,7 +170,9 @@ bun run test
 ## Deployment on Vercel
 
 Vercel detects the project as a **Hono backend** from `src/index.ts` (`export default app`). No
-`vercel.json` and no build step are needed. Project settings:
+`vercel.json` and no build step are needed. Keep the other candidate entrypoint names free
+(`app.ts`, `server.ts`, `main.ts`, `src/app.ts`...): Vercel picks the first one it finds and requires
+it to export the app. Project settings:
 
 | Setting              | Value                                                                              |
 | -------------------- | ---------------------------------------------------------------------------------- |
