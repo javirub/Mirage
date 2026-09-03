@@ -140,7 +140,9 @@ Intercepts what static rewriting cannot see: `fetch`, `XMLHttpRequest`, `sendBea
   DNS lookup of the `undici` connector, so the connection can only be opened to the validated IP.
 - The proxy cannot target itself.
 - `MIRAGE_ALLOWED_HOSTS` restricts targets to an allowlist.
-- `robots.txt` disallows indexing.
+- `robots.txt` is owned by the proxy and allows everything (`Allow: /`). The origin's
+  `robots.txt` is never forwarded: any `/https:/host/robots.txt` gets the proxy's own file, so the
+  target site's crawling rules never apply to proxied paths.
 
 An open proxy on the internet can be abused: if you deploy it publicly, restrict the hosts or put
 authentication in front of it.

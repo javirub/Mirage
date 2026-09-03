@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import type { MirageConfig } from './config.js';
 import { renderLandingPage } from './pages/landing.js';
 import { renderErrorPage } from './pages/error.js';
-import { createProxyRuntime, handleProxyRequest } from './proxy/handler.js';
+import { createProxyRuntime, handleProxyRequest, robotsResponse } from './proxy/handler.js';
 import { normalizeUserUrl, toProxyPath } from './proxy/target.js';
 
 /** Registra las rutas del proxy en una app Hono. Separado del entrypoint para poder crear apps en tests. */
@@ -12,7 +12,7 @@ export function registerRoutes(app: Hono, config: MirageConfig): Hono {
 
   app.get('/', async (c) => c.html(await renderLandingPage()));
 
-  app.get('/robots.txt', (c) => c.text('User-agent: *\nDisallow: /\n'));
+  app.get('/robots.txt', () => robotsResponse());
 
   // Destino del formulario de la portada cuando no hay JavaScript.
   app.get('/__mirage/go', async (c) => {

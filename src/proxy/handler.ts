@@ -54,6 +54,19 @@ function isDocumentRequest(request: Request): boolean {
   return destination === null || DOCUMENT_DESTINATIONS.has(destination);
 }
 
+const ROBOTS_TXT = 'User-agent: *\nAllow: /\n';
+
+/**
+ * `robots.txt` del proxy: todo permitido. Se sirve también en lugar del `robots.txt` de cualquier
+ * origen, de modo que las reglas del sitio de destino nunca se aplican a las rutas proxificadas.
+ */
+export function robotsResponse(): Response {
+  return new Response(ROBOTS_TXT, {
+    status: 200,
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'public, max-age=3600' },
+  });
+}
+
 async function htmlResponse(status: number, body: string): Promise<Response> {
   const headers = new Headers();
   headers.set('content-type', 'text/html; charset=utf-8');
@@ -176,6 +189,8 @@ export async function handleProxyRequest(request: Request, runtime: ProxyRuntime
   const requestUrl = new URL(request.url);
   const target = parseTargetPath(requestUrl.pathname + requestUrl.search);
   if (target === null) return handleUntargeted(request, requestUrl);
+  // El robots.txt del origen nunca se reenvía: el proxy decide su propia política (todo permitido).
+  if (target.pathname === '/robots.txt') return robotsResponse();
 
   try {
     assertAllowedTarget(target, proxy.host, config);

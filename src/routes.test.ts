@@ -59,6 +59,10 @@ function upstreamHandler(request: IncomingMessage, response: ServerResponse): vo
       response.setHeader('content-type', 'text/html');
       response.end('<li><a href="/item/1">uno</a></li>');
       return;
+    case '/robots.txt':
+      response.setHeader('content-type', 'text/plain');
+      response.end('User-agent: *\nDisallow: /\n');
+      return;
     default:
       response.statusCode = 404;
       response.setHeader('content-type', 'text/plain');
@@ -94,7 +98,7 @@ describe('proxy end-to-end', () => {
     assert.equal(landing.status, 200);
     assert.match(await landing.text(), /Mirage/);
     const robots = await app.fetch(new Request(`${PROXY}/robots.txt`));
-    assert.match(await robots.text(), /Disallow: \//);
+    assert.equal(await robots.text(), 'User-agent: *\nAllow: /\n');
   });
 
   it('reescribe un documento HTML, sus cookies y elimina la CSP', async () => {
@@ -171,6 +175,12 @@ describe('proxy end-to-end', () => {
     assert.equal(response.headers.get('location'), `/${proxiedOrigin}/api/data?x=1`);
     const orphan = await app.fetch(new Request(`${PROXY}/api/data`));
     assert.equal(orphan.status, 404);
+  });
+
+  it('nunca reenvía el robots.txt del origen: siempre responde el del proxy (todo permitido)', async () => {
+    const response = await proxied('/robots.txt');
+    assert.equal(response.status, 200);
+    assert.equal(await response.text(), 'User-agent: *\nAllow: /\n');
   });
 
   it('redirige rutas que empiezan por un host sin esquema a su versión https', async () => {
