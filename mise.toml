@@ -1,4 +1,4 @@
 # bun is pinned to the version Vercel uses for `bun install` (bun 1.4 writes lockfileVersion 2, which Vercel cannot parse yet)
 [tools]
-bun = "1.3.14"
+bun = "1.4.0"
 node = "24"
