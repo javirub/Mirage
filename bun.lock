@@ -1,9 +1,9 @@
 {
-  "lockfileVersion": 2,
+  "lockfileVersion": 1,
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "hono",
+      "name": "mirage",
       "dependencies": {
         "hono": "^4.13.5",
         "parse5": "^8.0.1",
